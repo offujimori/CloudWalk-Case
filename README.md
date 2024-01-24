@@ -4,5 +4,7 @@ Please add the "payload" file to the same file as the IsolationForest_ML_Anti_Fr
 
 LIBRARIES: numpy, pandas, flask, sklearn
 
+Anti-Fraud is working
+
 ![alt text](https://github.com/offujimori/CloudWalk-Case/blob/main/Production_AntiFraud.png)
 
