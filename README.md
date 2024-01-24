@@ -1,6 +1,6 @@
 # CloudWalk-Case
 
-Please add the "payload" file to the same foulder as the IsolationForest_ML_Anti_Fraud
+Please add the "payload" file to the same foulder as the IsolationForest Anti-Fraud
 
 LIBRARIES: numpy, pandas, flask, sklearn
 
