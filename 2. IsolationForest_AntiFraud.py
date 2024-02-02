@@ -3,8 +3,7 @@ import pandas as pd
 from flask import Flask, request, jsonify, render_template
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
-from sklearn.metrics import precision_score, recall_score, f1_score
-from pathlib import Path
+from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, accuracy_score
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.width', 320)
@@ -39,10 +38,9 @@ def predict():
         input_df["has_cbk"] = None
 
         prediction_df = preprocess(input_df)
-        print(prediction_df)
-        prediction = prediction_df.iloc[0, prediction_df.columns.get_loc("user_id")]
+        prediction = prediction_df.iloc[0, prediction_df.columns.get_loc("anomaly_prediction")]
 
-        if prediction == -1:
+        if prediction == 1:
             recommendation = "deny"
         else:
             recommendation = "approve"
@@ -57,13 +55,9 @@ def predict():
 
 def preprocess(input_df):
     # Load dataset
-    p = Path(__file__).with_name('transactional-sample.csv')
-    with p.open('r') as f:
-        print(f.read())
-    file_path = r"transactional-sample.csv"
+    file_path = r"C:\Users\OFF\Desktop\CloudWalk Case\transactional-sample.csv"
     df_1 = pd.read_csv(file_path)
     df = pd.concat([input_df, df_1], ignore_index=True)
-    print(df)
 
     # Data preprocessing ---------------------------------------------------------------------------------------------------
     df['card_number'] = df['card_number'].replace('\*', '', regex=True)
@@ -157,40 +151,49 @@ def preprocess(input_df):
     # Separate the data for analysis
     legit = df[df.has_cbk == False]
     fraud = df[df.has_cbk == True]
-    print(legit.shape)
-    print(fraud.shape)
 
     # Model Training using Isolation Forest
-    isolation_forest = IsolationForest(contamination=0.1)
+    isolation_forest = IsolationForest(contamination=0.15)
     isolation_forest.fit(df.drop("has_cbk", axis=1))
 
     # Predict anomalies
     predictions = isolation_forest.predict(df.drop("has_cbk", axis=1))
-    df["anomaly_prediction"] = predictions
+    # Convert anomaly labels (-1) to standard binary labels (0 for normal, 1 for anomaly)
+    df["anomaly_prediction"] = (predictions == -1).astype(int)
+    # Convert "has_cbk" column to binary labels (False -> 0, True -> 1)
+    df["has_cbk"] = df["has_cbk"].astype(int)
 
     # Accuracy Analysis
-    #y_true_anomalies = df["has_cbk"]
-    #y_pred_anomalies = df["anomaly_prediction"] == -1
-
-    #precision = precision_score(y_true_anomalies, y_pred_anomalies)
-    #recall = recall_score(y_true_anomalies, y_pred_anomalies)
-    #f1 = f1_score(y_true_anomalies, y_pred_anomalies)
-
-    # print(df)
-
-    # print("Precision:", precision)
-    # print("Recall:", recall)
-    # print("F1 Score:", f1)
-    # L2 ML MODEL END-------------------------------------------------------------------------------------------------------
+    print("\nHISTORICAL TRANSACTION DATA -------------------------------------------------------------------------------------------------------")
+    print("Legit Transactions: ", legit.shape)
+    print("Legit Transactions Statistics")
+    print(legit.transaction_amount.describe())
+    print("\nFraud Transactions: ", fraud.shape)
+    print("Fraud Transactions Statistics")
+    print(fraud.transaction_amount.describe())
+    y_df = df[df["transaction_id"] != input_df.iloc[0, input_df.columns.get_loc("transaction_id")]]
+    y_true = y_df["has_cbk"]
+    y_pred = y_df["anomaly_prediction"]
+    conf_matrix = confusion_matrix(y_true, y_pred)
+    print("\nConfusion Matrix:")
+    print(conf_matrix)
+    auc_score = roc_auc_score(y_true, y_pred)
+    acc = accuracy_score(y_true, y_pred)
+    print(precision_score(y_true, y_pred))
+    print("Accuracy Score: ", acc)
+    print("AUC Score: ", auc_score)
+    print("HISTORICAL TRANSACTION DATA -------------------------------------------------------------------------------------------------------")
 
     #   Retrieve
     input_transaction_id = input_df.iloc[0, input_df.columns.get_loc("transaction_id")]
+    print("\nCURRENT TRANSACTION DATA --------------------------------------------------------------------------------------------------------")
     print("REQUEST TRANSACTION ID: ", input_transaction_id)
+    print(df[df["transaction_id"] == input_transaction_id])
+    print("CURRENT TRANSACTION DATA ----------------------------------------------------------------------------------------------------------")
     return df[df["transaction_id"] == input_transaction_id]
 
 if __name__ == "__main__":
     app.run(debug=True)
-
 
 
 
